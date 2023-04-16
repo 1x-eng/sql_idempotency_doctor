@@ -58,6 +58,12 @@ To check the idempotency of the SQL scripts in the deploy and revert directories
 ```sh
 sql_idempotency_doctor check -p /path/to/directory -n namespace
 ```
+where scripts in `<namespace.sql>` that require assessment must be decorated with:
+```sql
+--@ddl:start
+<SQL here>
+--@ddl:end
+```
 
 ## Development
 To set up the development environment, follow these steps:

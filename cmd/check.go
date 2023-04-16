@@ -32,10 +32,10 @@ are idempotent. If even one of them is not, it returns false.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		isIdempotent := checkSQLFiles(pathFlag, namespaceFlag)
 		if !isIdempotent {
-			fmt.Println("Not all SQL scripts are idempotent.")
+			fmt.Printf("\nNot all SQL scripts are idempotent.\n")
 			os.Exit(1)
 		} else {
-			fmt.Println("All SQL scripts are idempotent.")
+			fmt.Printf("\nAll SQL scripts are idempotent.\n")
 		}
 	},
 }
@@ -54,18 +54,28 @@ func checkSQLFile(filePath string, isDeploy bool) bool {
 		os.Exit(1)
 	}
 
-	sqlStatements := strings.Split(string(content), ";")
-	for _, sqlStatement := range sqlStatements {
-		sqlStatement = strings.TrimSpace(sqlStatement)
-		if len(sqlStatement) > 0 {
-			isIdempotent := isIdempotent(sqlStatement, isDeploy)
+	sqlScript := string(content)
+	re := regexp.MustCompile(`--\s*@ddl:start\s+([\s\S]*?)\s+--\s*@ddl:end`)
+	blocks := re.FindAllStringSubmatch(sqlScript, -1)
 
-			if verboseFlag {
-				fmt.Printf("\n\n'%s' is idempotent? %v\n\n", sqlStatement, isIdempotent)
-			}
+	if verboseFlag {
+		fmt.Printf("\nFound %d blocks of PLPGSQL scripts that are due for assessment in '%s'.\n", len(blocks), filePath)
+	}
 
-			if !isIdempotent {
-				return false
+	for _, block := range blocks {
+		sqlStatements := strings.Split(block[1], ";")
+		for _, sqlStatement := range sqlStatements {
+			sqlStatement = strings.TrimSpace(sqlStatement)
+			if len(sqlStatement) > 0 {
+				isIdempotent := isIdempotent(sqlStatement, isDeploy)
+
+				if verboseFlag {
+					fmt.Printf("\n\n'%s' is idempotent? >>> %v\n\n", sqlStatement, isIdempotent)
+				}
+
+				if !isIdempotent {
+					return false
+				}
 			}
 		}
 	}
@@ -80,7 +90,7 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 		return true
 	}
 
-	sqlScript = strings.ToUpper(sqlScript)
+	sqlScript = strings.ToUpper(strings.TrimPrefix(sqlScript, "--@DDL"))
 
 	idempotentPatterns := []string{
 		`CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS`,
@@ -90,7 +100,6 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 		`CREATE\s+OR\s+REPLACE\s+(?:VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION)`,
 		`CREATE\s+(?:ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+IF\s+NOT\s+EXISTS`,
 		`CREATE\s+TEXT\s+SEARCH\s+(?:DICTIONARY|CONFIGURATION|PARSER|TEMPLATE)\s+IF\s+NOT\s+EXISTS`,
-		`CREATE\s+OR\s+REPLACE\s+FUNCTION`,
 	}
 
 	for _, pattern := range idempotentPatterns {

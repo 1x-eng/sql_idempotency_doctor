@@ -13,10 +13,12 @@ import (
 
 var pathFlag string
 var namespaceFlag string
+var verboseFlag bool
 
 func init() {
 	checkCmd.Flags().StringVarP(&pathFlag, "path", "p", "", "Path to the directory that includes 'deploy' and 'revert' directories")
 	checkCmd.Flags().StringVarP(&namespaceFlag, "namespace", "n", "", "Namespace for the SQL files")
+	checkCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false, "Enable verbose mode")
 	checkCmd.MarkFlagRequired("path")
 	checkCmd.MarkFlagRequired("namespace")
 	rootCmd.AddCommand(checkCmd)
@@ -57,6 +59,11 @@ func checkSQLFile(filePath string, isDeploy bool) bool {
 		sqlStatement = strings.TrimSpace(sqlStatement)
 		if len(sqlStatement) > 0 {
 			isIdempotent := isIdempotent(sqlStatement, isDeploy)
+
+			if verboseFlag {
+				fmt.Printf("\n\n'%s' is idempotent? %v\n\n", sqlStatement, isIdempotent)
+			}
+
 			if !isIdempotent {
 				return false
 			}
@@ -73,7 +80,7 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 		return true
 	}
 
-	sqlScript = strings.ToLower(sqlScript)
+	sqlScript = strings.ToUpper(sqlScript)
 
 	idempotentPatterns := []string{
 		`CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS`,
@@ -83,11 +90,15 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 		`CREATE\s+OR\s+REPLACE\s+(?:VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION)`,
 		`CREATE\s+(?:ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+IF\s+NOT\s+EXISTS`,
 		`CREATE\s+TEXT\s+SEARCH\s+(?:DICTIONARY|CONFIGURATION|PARSER|TEMPLATE)\s+IF\s+NOT\s+EXISTS`,
+		`CREATE\s+OR\s+REPLACE\s+FUNCTION`,
 	}
 
 	for _, pattern := range idempotentPatterns {
 		regex := regexp.MustCompile(pattern)
 		if regex.MatchString(sqlScript) {
+			if verboseFlag {
+				fmt.Printf("\n\n'%s' matches pattern '%s'\n\n", sqlScript, pattern)
+			}
 			return true
 		}
 	}

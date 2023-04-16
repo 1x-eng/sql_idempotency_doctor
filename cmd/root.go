@@ -17,6 +17,10 @@ var rootCmd = &cobra.Command{
 It verifies if the PLPGSQL scripts in the specified deploy and revert directories (usually, created & maintained by sqitch) are idempotent.`,
 }
 
+func init() {
+	rootCmd.Aliases = []string{"sid"}
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {

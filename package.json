@@ -1,0 +1,26 @@
+{
+  "name": "sql_idempotency_doctor",
+  "version": "0.0.1",
+  "description": "A CLI tool to check the idempotency of SQL scripts in PostgreSQL",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1x-eng/sql_idempotency_doctor.git"
+  },
+  "author": "Pruthvi Kumar",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/1x-eng/sql_idempotency_doctor/issues"
+  },
+  "homepage": "https://github.com/1x-eng/sql_idempotency_doctor#readme",
+  "devDependencies": {
+    "@semantic-release/commit-analyzer": "^9.0.2",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^8.0.7",
+    "@semantic-release/release-notes-generator": "^10.0.3",
+    "semantic-release": "^21.0.1"
+  }
+}

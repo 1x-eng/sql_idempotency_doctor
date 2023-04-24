@@ -15,7 +15,7 @@ This tool is built using the [Cobra](https://github.com/spf13/cobra) framework.
 
 ## Installation
 
-1. Download the latest binary for your platform from the [releases](https://github.com/your_username/sql_idempotency_doctor/releases) page.
+1. Download the latest binary for your platform from the [releases](https://github.com/1x-eng/sql_idempotency_doctor/releases) page.
 2. Extract the archive and place the `sql_idempotency_doctor` / `sid` executable in a directory included in your system's `PATH`.
 
 Alternatively, you can build the project from source:

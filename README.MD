@@ -1,22 +1,22 @@
 # sql_idempotency_doctor
 
-A CLI tool to check the idempotency of SQL scripts in PostgreSQL.
+A CLI tool to check/verify the idempotency of PLPGSQL scripts.
 
 sql_idempotency_doctor is a user-friendly command-line interface that verifies if the PLPGSQL scripts in the specified `deploy` and `revert` directories (usually created & maintained by [`sqitch`](https://github.com/sqitchers/sqitch)) are idempotent. 
 
-This tool is built using the [Cobra](https://github.com/spf13/cobra) framework and focuses on PostgreSQL databases.
+This tool is built using the [Cobra](https://github.com/spf13/cobra) framework.
 
 ## Table of Contents
 
 - [Installation](#installation)
 - [Usage](#usage)
 - [Examples](#examples)
-- [Development](#development)
+- [Getting Started](#gettingstarted)
 
 ## Installation
 
 1. Download the latest binary for your platform from the [releases](https://github.com/your_username/sql_idempotency_doctor/releases) page.
-2. Extract the archive and place the `sql_idempotency_doctor` executable in a directory included in your system's `PATH`.
+2. Extract the archive and place the `sql_idempotency_doctor` / `sid` executable in a directory included in your system's `PATH`.
 
 Alternatively, you can build the project from source:
 
@@ -30,17 +30,17 @@ cd sql_idempotency_doctor
 
 3. Build the executable:
 ```sh
-go build -o sql_idempotency_doctor
+go build -o sid
 ```
-4. Move the sql_idempotency_doctor executable to a directory included in your system's PATH.
+4. Move the `sid` executable to a directory included in your system's PATH.
 
 ## Usage
 To check the idempotency of SQL scripts, run the following command:
 
 ```sh
-sql_idempotency_doctor check -p /path/to/directory -n namespace
+sid check -p /path/to/directory -n namespace
 ```
-Replace /path/to/directory with the actual path to the directory containing the deploy and revert folders, and replace namespace with the namespace you want to check.
+Replace `/path/to/directory` with the actual path to the directory containing the deploy and revert folders, and replace namespace as you see fit.
 
 ## Examples
 Consider the following directory structure:
@@ -56,16 +56,20 @@ Consider the following directory structure:
 To check the idempotency of the SQL scripts in the deploy and revert directories, run:
 
 ```sh
-sql_idempotency_doctor check -p /path/to/directory -n namespace
+sid check -p /path/to/directory -n namespace
 ```
 where scripts in `<namespace.sql>` that require assessment must be decorated with:
 ```sql
 --@ddl:start
-<SQL here>
+CREATE OR REPLACE FUNCTION a_function()
+RETURNS BOOLEAN AS $$
+    SELECT true
+$$ LANGUAGE sql STABLE; 
 --@ddl:end
 ```
+For more samples, refer examples.sql
 
-## Development
+## GettingStarted
 To set up the development environment, follow these steps:
 
 1. Clone the repository:
@@ -82,10 +86,10 @@ go mod download
 ```
 4. Make your changes and build the executable:
 ```
-go build -o sql_idempotency_doctor
+go build -o sid
 ```
 5. Test your changes:
 ```
-./sql_idempotency_doctor check -p /path/to/directory -n namespace
+./sid check -p /path/to/directory -n namespace
 ```
 

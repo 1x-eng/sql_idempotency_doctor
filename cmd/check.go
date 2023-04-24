@@ -64,10 +64,27 @@ func checkSQLFile(filePath string, isDeploy bool) bool {
 
 	for _, block := range blocks {
 		sqlStatements := strings.Split(block[1], ";")
-		for _, sqlStatement := range sqlStatements {
+		for idx, sqlStatement := range sqlStatements {
 			sqlStatement = strings.TrimSpace(sqlStatement)
 			if len(sqlStatement) > 0 {
 				isIdempotent := isIdempotent(sqlStatement, isDeploy)
+
+				// Check if the current statement is a CREATE statement and the previous statement was a DROP with IF EXISTS
+				if !isIdempotent && idx > 0 {
+					prevStatement := strings.ToUpper(strings.TrimSpace(sqlStatements[idx-1]))
+					dropPattern := regexp.MustCompile(`DROP\s+(?:POLICY|SEQUENCE|TABLE|VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION|ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+IF\s+EXISTS\s+(.*)`)
+					createPattern := regexp.MustCompile(`CREATE\s+(?:POLICY|SEQUENCE|TABLE|VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION|ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+(.*)`)
+
+					dropMatch := dropPattern.FindStringSubmatch(prevStatement)
+					createMatch := createPattern.FindStringSubmatch(sqlStatement)
+
+					if len(dropMatch) > 1 && len(createMatch) > 1 && strings.EqualFold(dropMatch[1], createMatch[1]) {
+						if verboseFlag {
+							fmt.Printf("\nA create statement follows a drop statement on the same DB object.\nDB Object in prev. drop statement: %v, DB Object in current create statement: %v\n", dropMatch[1], createMatch[1])
+						}
+						isIdempotent = true
+					}
+				}
 
 				if verboseFlag {
 					fmt.Printf("\n\n'%s' is idempotent? >>> %v\n\n", sqlStatement, isIdempotent)
@@ -85,8 +102,7 @@ func checkSQLFile(filePath string, isDeploy bool) bool {
 
 func isIdempotent(sqlScript string, isDeploy bool) bool {
 	if !isDeploy {
-		// For revert scripts, just return true for now.
-		// Add any specific rules if necessary.
+		// For revert scripts, just return true for now. This is a TODO.
 		return true
 	}
 
@@ -100,8 +116,10 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 		`CREATE\s+OR\s+REPLACE\s+(?:VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION)`,
 		`CREATE\s+(?:ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+IF\s+NOT\s+EXISTS`,
 		`CREATE\s+TEXT\s+SEARCH\s+(?:DICTIONARY|CONFIGURATION|PARSER|TEMPLATE)\s+IF\s+NOT\s+EXISTS`,
+		`DROP\s+(?:POLICY|SEQUENCE|TABLE|VIEW|FUNCTION|PROCEDURE|TRIGGER|AGGREGATE|OPERATOR|RULE|POLICY|EVENT\s+TRIGGER|LANGUAGE|EXTENSION|ROLE|USER|SCHEMA|DOMAIN|CAST|COLLATION|CONVERSION|TYPE|SERVER|FOREIGN\s+TABLE|MATERIALIZED\s+VIEW|PUBLICATION|SUBSCRIPTION)\s+IF\s+EXISTS`,
 	}
 
+	// Check for patterns in regular SQL statements
 	for _, pattern := range idempotentPatterns {
 		regex := regexp.MustCompile(pattern)
 		if regex.MatchString(sqlScript) {
@@ -110,6 +128,20 @@ func isIdempotent(sqlScript string, isDeploy bool) bool {
 			}
 			return true
 		}
+	}
+
+	// Check for an idempotent PL/pgSQL block that might house a DDL statement
+	// The pattern below matches the following cases:
+	// 1. IF EXISTS (...) THEN ... ELSE ... CREATE
+	// 2. IF NOT EXISTS (...) THEN ... CREATE
+	// 3. IF EXISTS (...) THEN .. CREATE
+	plpgsqlIdempotentPattern := regexp.MustCompile(`(?i)(?:IF\s+EXISTS\s*\([^\)]*?\)\s+THEN\s+.*(?:\s+ELSE\s+.*\s+CREATE)?)|(?:IF\s+NOT\s+EXISTS\s*\([^\)]*?\)\s+THEN\s+.*\s+CREATE)`)
+
+	if plpgsqlIdempotentPattern.MatchString(sqlScript) {
+		if verboseFlag {
+			fmt.Printf("\n\n'%s' matches PL/pgSQL anonymous block pattern where a CREATE statement preceeds with an IF check\n\n", sqlScript)
+		}
+		return true
 	}
 
 	return false

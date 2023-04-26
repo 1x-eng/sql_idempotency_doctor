@@ -1,7 +1,3 @@
-/*
-Copyright © 2023 Pruthvi Kumar itspruthvikumar@gmail.com
-
-*/
 package cmd
 
 import (

@@ -1,19 +1,4 @@
---@ddl:start
-CREATE OR REPLACE FUNCTION a_function()
-RETURNS BOOLEAN AS $$
-    SELECT true;
-$$ LANGUAGE sql STABLE; 
---@ddl:end
-
---@ddl:start
-DROP POLICY IF EXISTS a_policy
-ON employees;
-CREATE POLICY a_policy
-ON employees
-FOR SELECT
-TO postgres;
---@ddl:end
-
+BEGIN;
 
 DO
 $do$
@@ -30,3 +15,21 @@ BEGIN
   --@ddl:end
 END
 $do$;
+
+--@ddl:start
+CREATE OR REPLACE FUNCTION a_function()
+RETURNS BOOLEAN AS $$
+    SELECT true
+$$ LANGUAGE sql STABLE; 
+--@ddl:end
+
+--@ddl:start
+DROP POLICY IF EXISTS pl_a_policy
+ON employees;
+CREATE POLICY pl_a_policy
+ON employees
+FOR SELECT
+TO postgres;
+--@ddl:end
+
+COMMIT;
